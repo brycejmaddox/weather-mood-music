@@ -2,6 +2,7 @@ import os
 import anthropic
 import json
 import requests
+import base64
 from dotenv import load_dotenv
 
 # Loading environment variables and retrieving API keys (weather + anthropic)
@@ -9,6 +10,24 @@ load_dotenv()
 weatherAPI_key = os.getenv("OPEN_WEATHER_API_KEY")
 anthropicAPI_key = os.getenv("ANTHROPIC_API_KEY")
 client = anthropic.Anthropic(api_key=anthropicAPI_key)
+spotifyClientID = os.getenv("SPOTIFY_CLIENT_ID")
+spotifyClientSecret = os.getenv("SPOTIFY_CLIENT_SECRET")
+
+# Spotify OAuth (more complicated than other APIs)
+joined_spotify_data =f"{spotifyClientID}:{spotifyClientSecret}"
+encoded_spotify_data = joined_spotify_data.encode()
+b64_encoded_spotify_data = base64.b64encode(encoded_spotify_data)
+b64_encoded_spotify_string = b64_encoded_spotify_data.decode()
+headers = {"Authorization": f"Basic {b64_encoded_spotify_string}", "Content-Type": "application/x-www-form-urlencoded" }
+body = {"grant_type": "client_credentials" }
+token_response = requests.post(
+    "https://accounts.spotify.com/api/token", 
+    headers=headers, 
+    data=body)
+spotify_data = token_response.json()
+spotify_temp_token = spotify_data['access_token']
+spotify_call_headers = {"Authorization": f"Bearer {spotify_temp_token}"}
+
 
 # Obtaining information from user to retrieve weather data
 zip_code = input("Please input your zip code: ")
@@ -43,9 +62,34 @@ json_text = response.content[0].text[start_index:stop_index + 1]
 converted_text = json.loads(json_text)
 music_genre = converted_text['music_genre']
 vibe = converted_text['vibe']
-songs_sugestions = converted_text['songs']
+song_suggestions = converted_text['songs']
+
+
+# Spotify API call for song_suggestions, run through for loop to get each URL preview for the songs
+url_list = []
+for song in song_suggestions:
+    query_parameters = {
+        "q": song,
+        "type": "track"
+    }
+    spotify_song_url = requests.get(
+        "https://api.spotify.com/v1/search", 
+        params=query_parameters, 
+        headers=spotify_call_headers)
+    
+# JSON returns huge dictionary. Use separate variables to navigate JSON and find track URL for each song
+    search_data = spotify_song_url.json()
+    tracks_data = search_data['tracks']
+    items_list = tracks_data['items']
+    first_track = items_list[0]
+    track_urls = first_track['external_urls']
+    track_link = track_urls['spotify']
+    url_list.append(track_link)
 
 # Printing end result
 print(f"Genre: {music_genre}")
 print(f"Vibe: {vibe}")
-print(f"Song suggestions: {songs_sugestions}")
+print("Here are some song suggestions:")
+for song, song_url in zip(song_suggestions, url_list):
+    print(f"{song}: {song_url}")
+print("Enjoy!")
