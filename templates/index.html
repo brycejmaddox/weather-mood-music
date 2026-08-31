@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="{{url_for('static' , filename = 'style.css')}}">
+</head>
+<body>
+    <div id="container">
+    <h1 id= "header">
+        Let's Get Some Music Suggestions!
+    </h1>
+    <input class="text-input" placeholder="Please input your zip code"> 
+    <div id="loading"></div> 
+    <div id ="weather-text"></div> 
+    </div>  
+    <script src="{{url_for('static' , filename = 'script.js')}}"></script>
+</body>
